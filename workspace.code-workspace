@@ -4,5 +4,7 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"docker.host": "tcp://172.24.221.17:2375"
+	}
 }

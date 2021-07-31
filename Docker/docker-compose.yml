@@ -2,11 +2,12 @@ version: "3.9"
 services:
 
   client-one:
+    privileged: true
     build: 
       context: ./client
     networks:
-      client1:
-        ipv4_address: ${priv_ip_client1}
+      full_network:
+        ipv4_address: ${priv_ip_client1}/24
     command: bash -c "while :; do :; done & kill -STOP $$! && wait $$!"
     environment:
       private_address: ${priv_ip_client1}
@@ -15,13 +16,15 @@ services:
       - all
 
   firewall-one:
+    privileged: true
     build: 
       context: ./firewall
     networks:
-      client1:
-        ipv4_address: ${priv_ip_fw1}
-      internet:
-        ipv4_address: ${pub_ip_fw1}
+      full_network:
+        ipv4_address: ${priv_ip_fw1}/24
+      full_network:
+        ipv4_address: ${pub_ip_fw1}/24
+    command: bash -c "while :; do :; done & kill -STOP $$! && wait $$!"
     environment: 
       fwprivate_address: ${priv_ip_fw1}
       fwpublic_address: ${pub_ip_fw1}
@@ -32,25 +35,27 @@ services:
   coturn:
     image: coturn/coturn
     networks:
-      internet:
-        ipv4_address: ${pub_ip_coturn}
+      full_network:
+        ipv4_address: ${pub_ip_coturn}/24
     
   test-website:
     image: nginxdemos/hello
     networks:
-      internet:
-        ipv4_address: ${pub_ip_website}
+      full_network:
+        ipv4_address: ${pub_ip_website}/24
+
 
 
 
   firewall-two:
+    privileged: true
     build: 
       context: ./firewall
     networks:
-      client2:
-        ipv4_address: ${priv_ip_fw2}
-      internet:
-        ipv4_address: ${pub_ip_fw2}
+      full_network:
+        ipv4_address: ${priv_ip_fw2}/24
+      full_network:
+        ipv4_address: ${pub_ip_fw2}/24
     environment: 
       fwprivate_address: ${priv_ip_fw2}
       fwpublic_address: ${pub_ip_fw2}
@@ -58,11 +63,12 @@ services:
       - all
     
   client-two:
+    privileged: true
     build: 
       context: ./client
     networks:
-      client2:
-        ipv4_address: ${priv_ip_client2}
+      full_network:
+        ipv4_address: ${priv_ip_client2}/24
     command: sh -c "while :; do :; done & kill -STOP $$! && wait $$!"
     environment:
       private_address: ${priv_ip_client2}
@@ -72,26 +78,9 @@ services:
 
 
 networks:
-  client1:
+  full_network:
     ipam:
       driver: default
       config:
-      - subnet: ${subnet_cli1}
-        gateway: ${subnet_cli1_fakeIP}
-    internal: true
-
-  internet:
-    ipam:
-      driver: default
-      config:
-      - subnet: ${subnet_internet}
-        gateway: ${subnet_internet_gw}
-
-  client2:
-    ipam:
-      driver: default
-      config:
-      - subnet: ${subnet_cli2}
-        gateway: ${subnet_cli2_fakeIP}
-    internal: true
+      - subnet: ${subnet_full_net}
      
