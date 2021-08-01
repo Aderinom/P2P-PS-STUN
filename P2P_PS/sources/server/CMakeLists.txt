@@ -1,8 +1,6 @@
 ﻿cmake_minimum_required(VERSION 3.10)
 
-
-
-project(p2p_client CXX)
+project(p2p_server CXX)
 
 file(GLOB_RECURSE sources	
 	${PROJECT_SOURCE_DIR}/src/*.c

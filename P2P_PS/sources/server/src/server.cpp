@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <cstdint>
 
 #define BUFLEN 512
 #define NPACK 10
