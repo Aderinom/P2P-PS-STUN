@@ -28,12 +28,20 @@ namespace network
 
 		struct client_bind_request_t
 		{
-			uint64_t transaction_id;
+			uint32_t transaction_id;
 		};
 
 		struct client_bind_response_t
 		{
-			uint64_t transaction_id;
+			uint32_t transaction_id;
+		};
+
+		struct ack_t
+		{
+		};
+
+		struct heartbeat_t
+		{
 		};
 
 		enum type_t : uint8_t
@@ -41,7 +49,9 @@ namespace network
 			bind_request = 0,
 			bind_reply = 1,
 			client_bind_request = 2,
-			client_bind_response = 3
+			client_bind_response = 3,
+			ack = 4,
+			heartbeat = 5
 		} type;
 	
 		union message 
@@ -49,6 +59,9 @@ namespace network
 			bind_request_t bind_request;
 			bind_reply_t bind_reply;
 			client_bind_request_t client_bind_request;
+			client_bind_response_t client_bind_response;
+			ack_t ack;
+			heartbeat_t heatrbeat;
 		} message;
 	};
 

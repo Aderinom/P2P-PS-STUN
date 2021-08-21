@@ -6,6 +6,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 
 project ("P2P")
+add_compile_options(-Wall -Werror)
 
 # Schließen Sie Unterprojekte ein.
 add_subdirectory ("sources")
+

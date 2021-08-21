@@ -1,7 +1,7 @@
 ﻿{
   "configurations": [
     {
-      "name": "Linux-GCC-Debug",
+      "name": "DBG-CL1",
       "generator": "Ninja",
       "configurationType": "Debug",
       "cmakeExecutable": "cmake",
@@ -10,7 +10,7 @@
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
       "inheritEnvironments": [ "linux_x64" ],
-      "remoteMachineName": "${defaultRemoteMachineName}",
+      "remoteMachineName": "1648172396;10.1.0.1 (username=user, port=22, authentication=Password)",
       "remoteCMakeListsRoot": "$HOME/.vs/${projectDirName}/${workspaceHash}/src",
       "remoteBuildRoot": "$HOME/.vs/${projectDirName}/${workspaceHash}/out/build/${name}",
       "remoteInstallRoot": "$HOME/.vs/${projectDirName}/${workspaceHash}/out/install/${name}",
@@ -18,8 +18,26 @@
       "rsyncCommandArgs": "-t --delete --delete-excluded",
       "remoteCopyBuildOutput": false,
       "remoteCopySourcesMethod": "rsync",
-      "addressSanitizerEnabled": false,
-      "variables": []
+      "addressSanitizerEnabled": false
+    },
+    {
+      "name": "DBG-SRV",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "cmakeExecutable": "cmake",
+      "remoteCopySourcesExclusionList": [ ".vs", ".git", "out" ],
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "linux_x64" ],
+      "remoteMachineName": "67960761;10.0.3.1 (username=user, port=22, authentication=Password)",
+      "remoteCMakeListsRoot": "$HOME/.vs/${projectDirName}/${workspaceHash}/src",
+      "remoteBuildRoot": "$HOME/.vs/${projectDirName}/${workspaceHash}/out/build/${name}",
+      "remoteInstallRoot": "$HOME/.vs/${projectDirName}/${workspaceHash}/out/install/${name}",
+      "remoteCopySources": true,
+      "rsyncCommandArgs": "-t --delete --delete-excluded",
+      "remoteCopyBuildOutput": false,
+      "remoteCopySourcesMethod": "rsync"
     }
   ]
 }

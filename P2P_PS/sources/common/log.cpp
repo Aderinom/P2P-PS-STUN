@@ -4,6 +4,16 @@ extern loglevel_e loglevel;
 
 const char* log_format = "|%s-%s| %s\n";
 
+void log_t::success(const char* format, ...)
+{
+	if (loglevel > DEBUG) return;
+
+	va_list ap;
+	va_start(ap, format);
+	write_message("SUCCS", format, ap);
+	va_end(ap);
+}
+
 
 void log_t::debug(const char* format, ...)
 {
@@ -13,7 +23,6 @@ void log_t::debug(const char* format, ...)
 	va_start(ap, format);
 	write_message("DEBUG", format, ap);
 	va_end(ap);
-
 }
 
 void log_t::log(const char* format, ...)
@@ -46,9 +55,18 @@ void log_t::error(const char* format, ...)
 	va_end(ap);
 }
 
+void log_t::statistic(const char* format, ...)
+{
+	if (loglevel > STATISTIC) return;
+
+	va_list ap;
+	va_start(ap, format);
+	write_message("STAT", format, ap);
+	va_end(ap);
+}
+
 std::unique_ptr<char> log_t::get_timestamp() {
 
-	char* result;
 	std::unique_ptr<char> buffer;
 	buffer.reset((char*)malloc(BUFFER_SIZE));
 

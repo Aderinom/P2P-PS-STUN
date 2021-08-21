@@ -3,7 +3,6 @@
 // By Oscar Rodriguez
 // This code is public domain, but you're a complete lunatic
 // if you plan to use this code in any real program.
-#include "client.h"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -13,7 +12,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <src/debug_log.h>
+
 
 #define BUFLEN 512
 #define NPACK 10

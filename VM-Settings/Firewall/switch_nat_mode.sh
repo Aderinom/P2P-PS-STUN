@@ -52,7 +52,7 @@ function port_restricted_cone_nat() {
     iptables --flush
     iptables -t nat --flush
 
-    iptables -A FORWARD -i $priv_if -o $publ_if -p tcp --dport 4444 -j ACCEPT
+    iptables -A FORWARD -i $priv_if -o $publ_if -p upd --dport 3333 -j ACCEPT
     iptables -A FORWARD -i $publ_if -o $priv_if -m state --state RELATED,ESTABLISHED -j ACCEPT
     iptables -A FORWARD -j DROP
 

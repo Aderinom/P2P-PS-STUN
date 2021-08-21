@@ -13,9 +13,12 @@
 enum loglevel_e
 {
 	DEBUG,
+	SUCCESS,
 	INFO,
 	WARNING,
-	ERROR
+	ERROR,
+	STATISTIC,
+	SILENT
 };
 
 class log_t
@@ -23,9 +26,11 @@ class log_t
 public:
 
 	static void debug(const char* format, ...);
+	static void success(const char* format, ...);
 	static void log(const char* format, ...);
 	static void warning(const char* format, ...);
 	static void error(const char* format, ...);
+	static void statistic(const char* format, ...);
 
 private:
 
