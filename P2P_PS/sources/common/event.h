@@ -1,3 +1,4 @@
+#pragma once
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
@@ -24,7 +25,7 @@ public:
     template< typename R,typename P >
     bool wait(const std::chrono::duration<R,P>& crRelTime) const
     {
-        std::unique_lock lock(m_mutex);
+        std::unique_lock< std::mutex > lock(m_mutex);
         if (!m_condition.wait_for(lock,crRelTime,[&]()->bool{ return m_bFlag; }))
             return false;
         return true;

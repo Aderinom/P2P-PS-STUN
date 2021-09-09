@@ -61,7 +61,7 @@ void log_t::statistic(const char* format, ...)
 
 	va_list ap;
 	va_start(ap, format);
-	write_message("STAT", format, ap);
+	write_message("STAT ", format, ap);
 	va_end(ap);
 }
 

@@ -1,0 +1,3 @@
+
+sysctl -w net.netfilter.nf_conntrack_max=32768
+echo "net.netfilter.nf_conntrack_max=32768" >> /etc/sysctl.conf
