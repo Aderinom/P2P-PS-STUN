@@ -22,5 +22,4 @@ int main(int argc, char* argv[])
 	network::udp_server_t server;
 
 	server.start();
-
 }

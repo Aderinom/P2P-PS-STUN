@@ -19,7 +19,12 @@ namespace network
 			tcp
 		};
 
+		virtual ~socket_i(){};
+
 		virtual bool init() = 0;
+		virtual int bind(const sockaddr_in & addr) = 0;
+		virtual uint16_t bind_by_portman(const uint16_t base_port) = 0;
+
 		virtual bool send(const uint8_t* buffer, uint32_t buffer_size) const = 0;
 		virtual int receive(uint8_t* buffer, uint32_t max_size) const = 0;
 		virtual int wait_receive(uint8_t* buffer, uint32_t max_size, uint32_t timeout_sec ) const = 0;

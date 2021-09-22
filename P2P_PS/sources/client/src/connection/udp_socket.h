@@ -1,5 +1,6 @@
 #pragma once
 #include "socket_i.h"
+#include "port_manager.h"
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -11,14 +12,18 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/types.h>
+#include <net/if.h>
 
+extern network::port_manager_t portman;
 namespace network
 {
     class udp_socket_t : 
 		public socket_i
 	{
 	public:
-		udp_socket_t(){}
+		udp_socket_t(){
+		}
+
 		~udp_socket_t()
 		{
 			if(initialized_)
@@ -26,7 +31,7 @@ namespace network
 				close(socket_handle_);
 			}
 		}
-		
+
 		// socket_i
 		bool init() override
 		{
@@ -40,7 +45,43 @@ namespace network
 			initialized_ = true;
 			return true;
 		}
+                   
+		int bind(const sockaddr_in & addr) override
+		{
+			if(!initialized_) return false;
+			return ::bind(socket_handle_, (const sockaddr *)&addr, sizeof(sockaddr_in));		
+		}
 
+		uint16_t bind_by_portman(const uint16_t base_port = 0) override
+		{
+			if(!initialized_) return false;
+			sockaddr_in addr;
+			memset(&addr,0,sizeof(sockaddr_in));
+
+			addr.sin_family = AF_INET;
+			addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+			uint16_t port;
+			if(base_port)
+			{
+				port = portman.assign_next_from_base(base_port);
+			}
+			else
+			{
+				port = portman.assign_next();
+			}
+
+			addr.sin_port = htons(port);
+
+			if(::bind(socket_handle_, (const sockaddr *)&addr, sizeof(sockaddr_in)) < 0)
+			{
+				return 0;
+			}
+			else
+			{
+				return port;
+			}
+		}
 		bool send(const uint8_t* buffer, uint32_t buffer_size) const override 
 		{
 			if(sendto(socket_handle_, (const char*)buffer, buffer_size, 0, (sockaddr*)&target_address_, sizeof(sockaddr_in)) == -1)
@@ -69,6 +110,11 @@ namespace network
 	
 			socklen_t len;
 			return recvfrom(socket_handle_, (char*)buffer, max_size, 0, (struct sockaddr*)&peer_address, &len);		
+		};
+
+		void set_target_address_(const sockaddr_in & target_address) 
+		{
+			target_address_ = target_address;
 		};
 
 		void set_target_address(const sockaddr_in & target_address) override
@@ -101,7 +147,7 @@ namespace network
 		};
 
 	private:
-
+		//Not Properly implemented! Just gets any IP addr, not the one the socket is actualy bound to
 		void refresh_own_ipv4() const
 		{
 			struct ifaddrs * ifAddrStruct=NULL;
@@ -110,9 +156,10 @@ namespace network
 			getifaddrs(&ifAddrStruct);
 
 			for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
-				if (!ifa->ifa_addr) {
-					continue;
-				}
+				if (!ifa->ifa_addr ||
+					!(ifa->ifa_flags & IFF_RUNNING) ||
+					(ifa->ifa_flags & IFF_LOOPBACK)
+				) continue;
 
 				if (ifa->ifa_addr->sa_family == AF_INET) { // check it is IP4
 					// is a valid IP4 Address
@@ -127,9 +174,9 @@ namespace network
 		}
 
 		bool initialized_ = false;
-		sockaddr_in target_address_= {0,0,0};
-		mutable sockaddr_in own_address_ = {0,0,0};
-		mutable sockaddr_in peer_address = {0,0,0};
+		sockaddr_in target_address_= {0};
+		mutable sockaddr_in own_address_ = {0};
+		mutable sockaddr_in peer_address = {0};
 
 		int socket_handle_ = 0;
 		uint32_t transaction_id_ = 0;

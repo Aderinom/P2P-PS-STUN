@@ -36,11 +36,13 @@ namespace network
 			waiting_for_client_reply,
 			connected,
 		};
-
-		udp_socket_t helper_socket;
+		bool is_sym_nat = true;
+		
 		address_t stun_server_address1;
 		address_t stun_server_address2;
 		uint32_t transaction_id_ = 0;
+		uint16_t base_port = 0;
+		
 	private:
 		state state = disconnected;
 
@@ -48,28 +50,42 @@ namespace network
 	
 		connect_result_e connect( socket_i & in_socket )
 		{	
+			
 			udp_socket_t & socket = reinterpret_cast<udp_socket_t&>(in_socket);
-			sockaddr_in stun_server_addr;
+			udp_socket_t socket2;
+
+			sockaddr_in stun_server_addr1;
+			sockaddr_in stun_server_addr2;
 			bool connection_established = false;
 			int result;
 			message_t message;
 
-			log_t::debug("Starting Connection to %hhu.%hhu.%hhu.%hhu:%hu//%hu",
-				stun_server_address1.ip_parts[0], stun_server_address1.ip_parts[1],
-				stun_server_address1.ip_parts[2], stun_server_address1.ip_parts[3],
-				stun_server_address1.port, stun_server_address2.port
+			log_t::debug("Starting Connection to %hhu.%hhu.%hhu.%hhu:%hu//%hhu.%hhu.%hhu.%hhu:%hu",
+				stun_server_address1.ip_parts[3], stun_server_address1.ip_parts[2],
+				stun_server_address1.ip_parts[1], stun_server_address1.ip_parts[0],
+				stun_server_address1.port, 
+				stun_server_address2.ip_parts[3], stun_server_address2.ip_parts[2],
+				stun_server_address2.ip_parts[1], stun_server_address2.ip_parts[0],
+				stun_server_address2.port
 			);
 
 			//
 			// Send First Request to server
 			//
 
-			memset(&stun_server_addr,0, sizeof(sockaddr_in));
+			memset(&stun_server_addr1,0, sizeof(sockaddr_in));
 		
-			stun_server_addr.sin_addr.s_addr = htonl(stun_server_address1.ip);
-			stun_server_addr.sin_port = htons(stun_server_address1.port);
-			stun_server_addr.sin_family = AF_INET;
-			socket.set_target_address(stun_server_addr);
+			stun_server_addr1.sin_addr.s_addr = htonl(stun_server_address1.ip);
+			stun_server_addr1.sin_port = htons(stun_server_address1.port);
+			stun_server_addr1.sin_family = AF_INET;
+
+			base_port = socket.bind_by_portman(0);
+			if(!base_port)
+			{
+				log_t::warning("Couldn't bind base socket1 to port recommended by portman | %s",strerror(errno));
+			}
+
+			socket.set_target_address(stun_server_addr1);
 
 			memset(&message,0, sizeof(message_t));
 			message.type = message.ps_bind_request;
@@ -96,49 +112,66 @@ namespace network
 			//
 			// Send Second Request to Server
 			//
+			{
+				udp_socket_t & helper_socket = is_sym_nat ? socket2 : socket;
 
-			if(!helper_socket.init())
-			{	
-				log_t::error("Failed initializing helper socket | %s", strerror(errno));
-				return connect_result_e::connection_error;
-			}
-	
+				if(is_sym_nat)
+				{
+					if(!helper_socket.init())
+					{	
+						log_t::error("Failed initializing helper socket | %s", strerror(errno));
+						return connect_result_e::connection_error;
+					}
+				}
+				
 
-			sleep(1);
+				sleep(1);
+
+				if(is_sym_nat)
+				{
+					if(!helper_socket.bind_by_portman(base_port))
+					{
+						log_t::warning("Couldn't bind base socket2 to port recommended by portman | %s",strerror(errno));
+					}
+				}
+
+				memset(&stun_server_addr2,0, sizeof(sockaddr_in));
 			
-			stun_server_addr.sin_addr.s_addr = htonl(stun_server_address2.ip);
-			stun_server_addr.sin_port = htons(stun_server_address2.port);
-			stun_server_addr.sin_family = AF_INET;
-			helper_socket.set_target_address(stun_server_addr);
+				stun_server_addr2.sin_addr.s_addr = htonl(stun_server_address2.ip);
+				stun_server_addr2.sin_port = htons(stun_server_address2.port);
+				stun_server_addr2.sin_family = AF_INET;
+
+				helper_socket.set_target_address(stun_server_addr2);
+				
+				message.type = message.ps_bind_request;
+				message.message.bind_request.transaction_id = htonl(transaction_id_);
+
+				if (!helper_socket.send((const uint8_t*)&message,sizeof(message))) 
+				{
+					log_t::error("Failed when Sending stun request | %s", strerror(errno));
+					return connect_result_e::connection_error;
+				}
+
+				result = helper_socket.wait_receive((uint8_t*)&message, sizeof(message_t),5);
+				if(result == -1 )
+				{
+					log_t::error("Error on receiving during connection establishment | %s", strerror(errno));
+					return connect_result_e::connection_error;
+				}
+				else if (result == 0)
+				{
+					log_t::error("Server did not ack packet in time | %s", strerror(errno));
+					return connect_result_e::connection_error;
+				}
+			}
 			
-			message.type = message.ps_bind_request;
-			message.message.bind_request.transaction_id = htonl(transaction_id_);
-
-			if (!helper_socket.send((const uint8_t*)&message,sizeof(message))) 
-			{
-				log_t::error("Failed when Sending stun request | %s", strerror(errno));
-				return connect_result_e::connection_error;
-			}
-
-			result = helper_socket.wait_receive((uint8_t*)&message, sizeof(message_t),5);
-			if(result == -1 )
-			{
-				log_t::error("Error on receiving during connection establishment | %s", strerror(errno));
-				return connect_result_e::connection_error;
-			}
-			else if (result == 0)
-			{
-				log_t::error("Server did not ack packet in time | %s", strerror(errno));
-				return connect_result_e::connection_error;
-			}
-
 			//
 			// Send Second Request to Server
 			//
 
 			state = state::waiting_for_stun_reply;
 
-			uint32_t attempts_left = 30;
+			uint32_t attempts_left = 5;
 			sockaddr_in peer_addr;
 
 			while (!connection_established && attempts_left)
@@ -178,7 +211,8 @@ namespace network
 				{
 				case message.ps_bind_reply:
 					{
-						if (peer_addr.sin_addr.s_addr != stun_server_addr.sin_addr.s_addr)
+						if (peer_addr.sin_addr.s_addr != stun_server_addr2.sin_addr.s_addr &&
+							peer_addr.sin_addr.s_addr != stun_server_addr1.sin_addr.s_addr)
 						{
 							log_t::warning("Got bind reply from unknown host %s:%d", inet_ntoa(peer_addr.sin_addr), ntohs(peer_addr.sin_port));
 							continue;
@@ -258,65 +292,109 @@ namespace network
 		// -1 not possible
 		// 0 failed
 		// 1 success 
-		int try_start_ps_connection(message_t::ps_bind_reply_t & bind_reply, udp_socket_t & socket )
+		int try_start_ps_connection(message_t::ps_bind_reply_t & bind_reply, udp_socket_t & in_socket )
 		{
 			uint16_t p1 = ntohs(bind_reply.addr_one.sin_port); 
 			uint16_t p2 = ntohs(bind_reply.addr_two.sin_port); 
-
 			uint16_t target_port = determine_target_port(p1,p2, bind_reply.T1, bind_reply.T2, scan_range);
-
 			if(target_port == 0) return -1;
-			log_t::log("Got ports %hu::%hu with %llu dT | targeting port %hu", p1, p2, bind_reply.T2 - bind_reply.T1,target_port);
 
-
-			bool success = false;
-			udp_socket_t sockets[50];
 			sockaddr_in addr = bind_reply.addr_one;
-			int max_sock_addr = 0;
 			timeval timeout = { 3, 0 };
 			fd_set rfds;
 			FD_ZERO(&rfds);
+			addr.sin_port = htons(target_port);
 
+			
 
-			for (uint32_t i = 0; !success && i < scan_range; i++)
-			{	
-				udp_socket_t & socket = sockets[i];
-				if(!socket.init()) return -1;
+			if(is_sym_nat)
+			{
+				if(target_port == p1)
+				{
+					log_t::statistic("[SYM]BASE %hu -> %hu TRG[NRM] (%hu::%hu dT %llu)", base_port, target_port, p1, p2,bind_reply.T2 - bind_reply.T1);
+				}else{
+					log_t::statistic("[SYM]BASE %hu -> %hu TRG[SYM] (%hu::%hu dT %llu)", base_port, target_port, p1, p2,bind_reply.T2 - bind_reply.T1);
+				}
 
-				int socket_handle = socket.get_socket();
+				// Symmetric NAT
+				std::vector<udp_socket_t> sockets(scan_range);
+				bool success = false;
+				int max_sock_addr = 0;
+	
 
-				addr.sin_port = htons(target_port);
-				socket.set_target_address(addr);
+				for (uint32_t i = 0; !success && i < scan_range; i++)
+				{	
+					//sockets[i].reset(new udp_socket_t);
+					udp_socket_t & socket = sockets[i] = udp_socket_t();
+			
+					if(!socket.init()) return -1;
+					
+					if(!socket.bind_by_portman(base_port))
+					{
+						log_t::warning("Couldn't bind scan socket to port recommended by portman | %s",strerror(errno));
+					}
+					socket.set_target_address(addr);
+
+					int socket_handle = socket.get_socket();
+					if(max_sock_addr < socket_handle) max_sock_addr = socket_handle;
+					FD_SET(socket_handle, &rfds);
+					
+					try_connect_to_client(socket);
+				}	
+
+				int result = select(max_sock_addr + 1, &rfds, NULL, NULL, &timeout);
 				
-				if(max_sock_addr < socket_handle) max_sock_addr = socket_handle;
+				if(result == 0)
+				{
+					log_t::log("P2P Port predicted Connection Failed");
+					return 0;
+				} 
+				else if(result == -1)
+				{
+					log_t::error("Error on receiving during select on sockets | %s", strerror(errno));
+					return 0;
+				}
+
+
+				for (uint32_t i = 0; i < scan_range; i++)
+				{
+					
+					if(!FD_ISSET(sockets[i].get_socket(), &rfds)) continue;
+					std::swap(in_socket, sockets[i]);
+					
+					return 1;
+				}		
+
+			}
+			else
+			{
+				if(target_port == p1)
+				{
+					log_t::statistic("[NRM]BASE %hu -> %hu TRG[NRM] (%hu::%hu dT %llu)", base_port, target_port, p1, p2,bind_reply.T2 - bind_reply.T1);
+				}else{
+					log_t::statistic("[NRM]BASE %hu -> %hu TRG[SYM] (%hu::%hu dT %llu)", base_port, target_port, p1, p2,bind_reply.T2 - bind_reply.T1);
+				}
+
+				in_socket.set_target_address(addr);
+				
+				try_connect_to_client(in_socket);
+
+				int socket_handle = in_socket.get_socket();
 				FD_SET(socket_handle, &rfds);
-				
-				try_connect_to_client(socket);
+				int result = select(socket_handle + 1, &rfds, NULL, NULL, &timeout);
 
-			}
-
-			int result = select(max_sock_addr + 1, &rfds, NULL, NULL, &timeout);
-			
-			if(result == 0)
-			{
-				log_t::log("P2P Port predicted Connection Failed");
-				return 0;
-			} 
-			else if(result == -1)
-			{
-				log_t::error("Error on receiving during select on sockets | %s", strerror(errno));
-				return 0;
-			}
-
-
-			for (uint32_t i = 0; i < scan_range; i++)
-			{
-				
-				if(!FD_ISSET(sockets[i].get_socket(), &rfds)) continue;
-				std::swap(socket, sockets[i]);
+				if(result == 0)
+				{
+					log_t::log("P2P Port predicted Connection Failed");
+					return 0;
+				} 
+				else if(result == -1)
+				{
+					log_t::error("Error on receiving during select on sockets | %s", strerror(errno));
+					return 0;
+				}
 				return 1;
-			}
-			
+			}	
 
 			return 0;
 		}
@@ -324,6 +402,8 @@ namespace network
 
 		uint16_t determine_target_port(uint16_t first_port, uint16_t second_port, uint64_t T1, uint64_t T2, uint32_t scan_range)
 		{
+
+			if(first_port == second_port) return first_port;
 
 			log_t::debug("Determining ports %hu:%hu with Tdiff %llu",first_port, second_port ,T2 - T1);
 			if(first_port + 250 > second_port && first_port - 250 < second_port)
@@ -335,8 +415,15 @@ namespace network
 				uint64_t timediff_now = time_now - T2;
 
 				float parts = (float)(timediff_now + 100) / timediff_port_allocation; //Current time difference plus roundtrip estimate untill packet reaches partner divided by timediff between allocations;
-				return (parts * distance) + second_port + (scan_range)/2;
-
+				
+				if(distance > 0)
+				{
+					return second_port + (parts * distance) + (scan_range)/2;
+				}
+				else
+				{
+					return second_port + (parts * distance) - (scan_range)/2;
+				}
 			}
 			else
 			{
@@ -349,16 +436,18 @@ namespace network
 				return 0;
 			}
 
-			// there is also a chance that by the time the second port was reached the Port allocation limit was hit and it starts back at the beginning. This case is not tested. 
+			// there is also a chance that by the time the second port was reached the Port allocation limit was hit and it starts back at the beginning. This case is not handled. 
 		};
 
 
-		bool try_connect_to_client(socket_i & socket)
+		bool try_connect_to_client(udp_socket_t & socket)
 		{
 			message_t message;
 			message.type = message.client_bind_request;
 			message.message.client_bind_request.transaction_id = htonl(transaction_id_);
-			log_t::debug("Trying to connect to client %s:%d ", inet_ntoa(socket.get_target_address().sin_addr), ntohs(socket.get_target_address().sin_port));
+			auto target = socket.get_target_address();
+			
+			log_t::debug("Trying to connect to client %s:%hu ", inet_ntoa(target.sin_addr), ntohs(target.sin_port));
 			
 			int result = socket.send((uint8_t *)&message, sizeof(message_t));
 			if (result == -1) {
@@ -371,7 +460,7 @@ namespace network
 
 		bool reply_to_bind_request(socket_i & socket, const message_t::client_bind_request_t & client_bind_request, sockaddr_in & peer_addr)
 		{
-			log_t::debug("Got client_bind_request_t client %s:%d", inet_ntoa(peer_addr.sin_addr), ntohs(peer_addr.sin_port));
+			log_t::debug("Got client_bind_request_t client %s:%hu", inet_ntoa(peer_addr.sin_addr), ntohs(peer_addr.sin_port));
 
 			if (transaction_id_ != ntohl(client_bind_request.transaction_id))
 			{

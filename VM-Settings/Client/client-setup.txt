@@ -23,3 +23,9 @@ pass : user
     iptables -t raw --flush
     iptables -I OUTPUT -t raw -p udp -j CT --notrack
     iptables -I PREROUTING -t raw -p udp -j CT --notrack
+
+
+
+/etc/security/limits.conf.
+*                hard    nofile          97816
+*                soft    nofile          97816

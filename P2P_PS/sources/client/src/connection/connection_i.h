@@ -15,6 +15,7 @@ namespace network
 
 	struct connector_i
 	{
+		virtual ~connector_i(){};
 		virtual connect_result_e connect( socket_i & socket ) = 0;
 	};
 
@@ -33,7 +34,8 @@ namespace network
 			connecting,
 			connected,
 		};
-
+		
+		virtual ~connection_i(){};
 		virtual connect_result_e connect(connector_i & connector_algorithm) = 0;
 		virtual bool send(const uint8_t* buffer, uint32_t buffer_size) const = 0;
 		virtual uint32_t receive(uint8_t* buffer, uint32_t max_size) const = 0;

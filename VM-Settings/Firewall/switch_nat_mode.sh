@@ -44,7 +44,7 @@ function switch_nat_mode() {
         *)
             echo "Usasge"
             echo "switch_nat_mode.sh full <targetIP>    Full_cone nat forwarding everything to targetIP"
-            echo "switch_nat_mode.sh restr <targetIP>   Restricted_cone nat forwarding already initialized connections to targetIP"
+            echo "switch_nat_mode.sh restr              Restricted_cone nat forwarding already initialized connections to targetIP"
             echo "switch_nat_mode.sh sym                Symmetric nat using the hosts port as mapped port"
             echo "switch_nat_mode.sh sym_r              Symmetric nat using a random starting port as mapped port"
             echo "switch_nat_mode.sh sym_m              Symmetric nat using the hosts port as mapped port by masquerade"
@@ -56,13 +56,11 @@ function switch_nat_mode() {
 
 function full_cone() {
     # 1:1 full mapping
-    target=$2
-
     iptables --flush
     iptables -t nat --flush
 
     iptables -t nat -A POSTROUTING -o $publ_if -j SNAT --to-source $publ_ip
-    iptables -t nat -A PREROUTING  -i $publ_if -j DNAT --to-destination $target
+    iptables -t nat -A PREROUTING  -i $publ_if -j DNAT --to-destination $target_ip
 }
 
 function restricted_cone_nat() {
@@ -138,5 +136,7 @@ function rand_symmetrical_natmasq() {
     iptables -t nat -A POSTROUTING -o $publ_if -j MASQUERADE --random
 
 }
+
+target_ip=$2
 
 switch_nat_mode $1

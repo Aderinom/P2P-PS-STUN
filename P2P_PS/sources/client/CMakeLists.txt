@@ -9,7 +9,8 @@ file(GLOB_RECURSE sources
 	${PROJECT_SOURCE_DIR}/src/*.hpp
 )
 
-add_executable(${PROJECT_NAME} ${sources})
 
+add_executable(${PROJECT_NAME} ${sources})
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 target_link_libraries(${PROJECT_NAME} common pthread)
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/sources)
